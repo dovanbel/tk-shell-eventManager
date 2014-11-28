@@ -1,6 +1,8 @@
 import datetime
 
 
+
+
 class sg_Event(object) :
     
     isLast_sc  = None 
@@ -239,10 +241,12 @@ def calculateArray(array_2D, contextList) :
     for idx in range(len(array_2D)) :
          
         event , nextEvent_sc = getNextEvent_sameContext(array_2D, idx)
-        
-
-
         nextEvent = getNextEvent(array_2D, idx)
+
+
+
+
+
         if nextEvent :
             
             # le cas AA
@@ -266,6 +270,8 @@ def calculateArray(array_2D, contextList) :
                     else :
                         #contextTimeDict[str(event.context)] += 0.0
                         pass
+
+
 
         idx += 1
 
