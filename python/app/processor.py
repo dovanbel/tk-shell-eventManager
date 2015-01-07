@@ -452,6 +452,8 @@ def displayDataWS(workstationDict, cout ):
         cout(workstation)
     """
 def displayDataContext(workstationDict, cout ):
+    outputText = ""
+
     consol = sgtk.platform.current_bundle().engine.log_info
 
     dataContextDict=dict()
@@ -483,11 +485,11 @@ def displayDataContext(workstationDict, cout ):
     fullBruteTime = 0
 
     for context in dataContextDict.keys():
-        cout(context)
+        
         calculated = dataContextDict[context]["calculated"]
         brut = dataContextDict[context]["brut"]
         
-        cout("  Filtered : " +  str(dataContextDict[context]["filtered"]) )
+        
         sumFiltered  = 0
         for filterValue in dataContextDict[context]["filtered"]:
             sumFiltered  += filterValue
@@ -496,12 +498,23 @@ def displayDataContext(workstationDict, cout ):
 
         net = calculated + sumFiltered
         
-        
+        cout(context)
+        cout("  Filtered : " +  str(dataContextDict[context]["filtered"]) )
         cout("  brut : " + formatMinutes(brut))
-        cout("  calculated : "  +  formatMinutes(calculated)) # str(round(brut,2 ) ) )
+        cout("  worked : "  +  formatMinutes(calculated)) # str(round(brut,2 ) ) )
         cout("  Net : "   +  formatMinutes(net)) # str(round(net,2) ) ) 
-        cout("  Ratio calculated = " + str(round(calculated/brut*100,2) ) + " % brut" )
-        cout("  Ratio net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % calculated")
+        cout("  worked = " + str(round(calculated/brut*100,2) ) + " % brut" )
+        cout("  net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked")
+
+        outputText +="<br>###### " + str(context)  + " ########<br>"
+        outputText +="   Filtered : " +  str(dataContextDict[context]["filtered"]) + "<br>"
+        outputText +="   brut : " + formatMinutes(brut) +"<br>"
+        outputText +="   worked : "  +  formatMinutes(calculated) +"<br>"
+        outputText +="   Net : "   +  formatMinutes(net) +"<br>" # str(round(net,2) ) ) 
+        outputText +="   worked = " + str(round(calculated/brut*100,2) ) + " % brut" +"<br>"
+        outputText +="   net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked" +"<br>"
+
+
 
         fullCalculated += calculated
         fullNet += net
@@ -511,10 +524,22 @@ def displayDataContext(workstationDict, cout ):
 
     cout("\n####### TOTALS ########")
     cout("brut       : " + formatMinutes(fullBruteTime))
-    cout("calculated : " + formatMinutes(fullCalculated))
+    cout("worked : " + formatMinutes(fullCalculated))
     cout("net        : " + formatMinutes(fullNet))
-    cout("Ratio calculated = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" )
-    cout("Ratio net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % calculated")
+    cout("worked = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" )
+    cout("net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked")
+
+
+    outputText += "<br>####### TOTALS ########<br>"
+    outputText += "brut       : " + formatMinutes(fullBruteTime) + "<br>"
+    outputText += "worked     : " + formatMinutes(fullCalculated) + "<br>"
+    outputText += "net        : " + formatMinutes(fullNet) + "<br>"
+    outputText += "worked = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" + "<br>"
+    outputText += "net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked" + "<br>"
+
+    return outputText
+
+
 
 def formatMinutes(TimeInminutes):
     
@@ -539,7 +564,20 @@ def formatMinutes(TimeInminutes):
 
 def launch(progressBar, logLabel, filterDataList , app ) :
     
-    f = open('c:/temp/coucou.html', 'w')
+    sg = app.engine.tank.shotgun
+    projectId = app.context.project #  {"type":'Project',"id":186}
+
+
+    today = datetime.datetime.utcnow().strftime("%Y%m%d")
+
+    import os
+    try :
+        os.makedirs("c:/temp")
+    except :
+        pass
+
+    outputLogFileName =  "c:/temp/eventManager_"+projectId["name"]+"_"+ today +".html"
+    f = open(outputLogFileName, 'w')
     f.write("<!DOCTYPE html><html><head><title>Page Title</title></head><body><dir>")
 
 
@@ -553,6 +591,8 @@ def launch(progressBar, logLabel, filterDataList , app ) :
 
 
 
+
+
     eventFilter_List=[]
     for filterData in filterDataList :
         eventFilter_List.append( event_filter(*filterData))
@@ -562,8 +602,7 @@ def launch(progressBar, logLabel, filterDataList , app ) :
     textLineList=["<font color='#000000'>Results : </font>"]
     
 
-    sg = app.engine.tank.shotgun
-    projectId = app.context.project #  {"type":'Project',"id":186}
+
 
 
     cout("Retrieving project workstation list : " + str(projectId) )
@@ -643,13 +682,6 @@ def launch(progressBar, logLabel, filterDataList , app ) :
 
         workstationDict[workstation]=dayContext_timeTree
 
-        """
-        for k,v in dayContext_timeTree.iteritems():
-            cout(str(k))
-            for l,m in dayContext_timeTree[k].iteritems():
-                cout("  "+ str(l) + " : " + str(m))
-        """
-
    
         ev+= len(array_2D)
         
@@ -657,8 +689,12 @@ def launch(progressBar, logLabel, filterDataList , app ) :
         progressBar.setValue(stepProgressBar)
 
 
-    displayDataWS(workstationDict, cout )
-    displayDataContext(workstationDict, cout )
+    #displayDataWS(workstationDict, cout )
+    outputText = displayDataContext(workstationDict, cout )
+    outputText +="<br><br> See full log file :<br>"
+    outputText += str(outputLogFileName)
+
+    logLabel.setText(outputText.replace(" ","&nbsp;"))
     progressBar.setValue(100)
     progressBar.setFormat("Computing done")
 
