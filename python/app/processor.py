@@ -1,5 +1,6 @@
 import datetime
-import sgtk
+
+#import sgtk
 from collections import defaultdict
 
 def timeTree(): return defaultdict(timeTree)
@@ -54,6 +55,8 @@ class event_filter(object) :
 
         self.contextName = context
 
+        self.massTest = False
+    
     def calculate(self, event, nextEvent):
         # is matching the inactivityTime ?
 
@@ -61,6 +64,13 @@ class event_filter(object) :
 
         if event.when.date() != nextEvent.when.date():
             return 0.0
+
+
+
+        if self.massTest != None:
+            if (nextEvent-event) > self.massTest :    
+                return -1 * (nextEvent-event)
+
 
         ina = ""
         # this two events do not match the filters inactivity duration          
@@ -151,7 +161,7 @@ def getTimeDelta(array_2D, idx) :
 
 
 def drawArray(array_2D, filterList, command ):
-    consol = sgtk.platform.current_bundle().engine.log_info
+    ##consol = sgtk.platform.current_bundle().engine.log_info
     idx = 0
     prevDay = None
     for array_1D in array_2D :
@@ -245,7 +255,7 @@ def getPrevEvent_sameContext(array_2D, idx) :
 
 
 def doFilterCalcul(event, nextEvent, eventFilter_List) :
-    consol = sgtk.platform.current_bundle().engine.log_info
+    ##consol = sgtk.platform.current_bundle().engine.log_info
     for ev_filt in eventFilter_List :
         timeRem = ev_filt.calculate( event, nextEvent)
         event.removeTime.append(timeRem)
@@ -274,7 +284,7 @@ def do_sum_filterArrayRemoveTime(sum_timeRemArray, timeRemArray ):
     return new_sum_timeRemArray
 
 def calculateArray(array_2D, contextList, eventFilter_List, command) :
-    consol = sgtk.platform.current_bundle().engine.log_info
+    ##consol = sgtk.platform.current_bundle().engine.log_info
     dayContext_timeTree    = timeTree()
 
     emptyFilterArray = []
@@ -423,7 +433,7 @@ def preLaunch(progressBar, logLabel, app) :
 
     #projectId = {"type":'Project',"id":186} # app.context.project)
     projectId = app.context.project
-    
+    #projectId = {"type":'Project',"id":244}
     eventFilterList = ['version_up','save_file_as', 'open_file', 'file_publish', 'new_file','open_file','open_file_snapshot' ]
     filters = [ ["project", "is", projectId],  ["event_type", "in", eventFilterList ], ["entity", 'is_not', None]  ]
     eventsList = sg.find("EventLogEntry", filters, [ "entity"] )
@@ -451,21 +461,98 @@ def displayDataWS(workstationDict, cout ):
     for workstation in workstationDict.keys():
         cout(workstation)
     """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def displayDataContext_perDay(workstationDict, PROJ , datafileName):
+    
+    import pickle
+
+    
+    dayDataContextDict=dict()
+
+
+    for ws in workstationDict.keys():
+
+        for day in workstationDict[ws].keys() :
+            DAY = str(day)
+
+            if not dayDataContextDict.has_key( DAY ):
+                dayDataContextDict[DAY] = { PROJ : {} }
+
+            for context in workstationDict[ws][day].keys():
+
+                contextDict = None
+                exec("contextDict=%s"%context)
+                TASK = contextDict["name"]
+    
+
+
+                calculatedValue = workstationDict[ws][day][context]["calculated"]
+                filteredValueList = workstationDict[ws][day][context]["filtered"]
+                brutValue = workstationDict[ws][day][context]["brut"]
+
+                if not dayDataContextDict[DAY][PROJ].has_key( TASK ):
+                    dayDataContextDict[DAY][PROJ][TASK] = {"C": calculatedValue , "F": filteredValueList , "B": brutValue }
+
+                else :
+                    dayDataContextDict[DAY][PROJ][TASK]["C"]    += calculatedValue
+                    sum_removeTimeArray = dayDataContextDict[DAY][PROJ][TASK]["F"] 
+                    dayDataContextDict[DAY][PROJ][TASK]["F"]  = do_sum_filterArrayRemoveTime(  sum_removeTimeArray, filteredValueList )
+                    dayDataContextDict[DAY][PROJ][TASK]["B"]  += brutValue
+                
+
+    fileObject = open(datafileName,'wb')
+    pickle.dump(dayDataContextDict, fileObject )
+    fileObject.close()
+
+
+
+
+
+
+
+
+
 def displayDataContext(workstationDict, cout ):
+    
+    
+
+
     outputText = ""
 
-    consol = sgtk.platform.current_bundle().engine.log_info
+    ##consol = sgtk.platform.current_bundle().engine.log_info
 
     dataContextDict=dict()
     
+    dayDataContextDict=dict()
+
+
     for ws in workstationDict.keys():
         value = 0
         for day in workstationDict[ws].keys() :
+            if not dayDataContextDict.has_key(str(day)):
+                dayDataContextDict[str(day)] = None
+
 
             for context in workstationDict[ws][day].keys():
                 
                 calculatedValue = workstationDict[ws][day][context]["calculated"]
                 filteredValue = workstationDict[ws][day][context]["filtered"]
+
                 brutValue = workstationDict[ws][day][context]["brut"]
 
                 contextDict = None
@@ -477,8 +564,19 @@ def displayDataContext(workstationDict, cout ):
                     sum_removeTimeArray = dataContextDict[str(contextDict["name"]) ]["filtered"]
                     dataContextDict[str(contextDict["name"]) ]["filtered"] = do_sum_filterArrayRemoveTime(  sum_removeTimeArray, filteredValue)
                     dataContextDict[str(contextDict["name"]) ]["brut"] += brutValue
+                
                 else :
+                
+
                     dataContextDict[str(contextDict["name"]) ] = {"calculated": calculatedValue,"filtered" : filteredValue, "brut" : brutValue}
+
+
+
+
+
+
+
+
 
     fullCalculated = 0
     fullNet = 0
@@ -503,16 +601,18 @@ def displayDataContext(workstationDict, cout ):
         cout("  brut : " + formatMinutes(brut))
         cout("  worked : "  +  formatMinutes(calculated)) # str(round(brut,2 ) ) )
         cout("  Net : "   +  formatMinutes(net)) # str(round(net,2) ) ) 
-        cout("  worked = " + str(round(calculated/brut*100,2) ) + " % brut" )
-        cout("  net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked")
+        if brut and calculated :
+            cout("  worked = " + str(round(calculated/brut*100,2) ) + " % brut" )
+            cout("  net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked")
 
         outputText +="<br>###### " + str(context)  + " ########<br>"
         outputText +="   Filtered : " +  str(dataContextDict[context]["filtered"]) + "<br>"
         outputText +="   brut : " + formatMinutes(brut) +"<br>"
         outputText +="   worked : "  +  formatMinutes(calculated) +"<br>"
         outputText +="   Net : "   +  formatMinutes(net) +"<br>" # str(round(net,2) ) ) 
-        outputText +="   worked = " + str(round(calculated/brut*100,2) ) + " % brut" +"<br>"
-        outputText +="   net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked" +"<br>"
+        if brut and calculated :
+            outputText +="   worked = " + str(round(calculated/brut*100,2) ) + " % brut" +"<br>"
+            outputText +="   net = " + str(round(net/brut*100,2) ) + " % brut = " + str(round(net/calculated*100,2) ) + " % worked" +"<br>"
 
 
 
@@ -562,43 +662,72 @@ def formatMinutes(TimeInminutes):
     return result 
 
 
-def launch(progressBar, logLabel, filterDataList , app ) :
+def launch(progressBar, logLabel, filterDataList , app, projectContext = None, sg= None ) :
     
-    sg = app.engine.tank.shotgun
-    projectId = app.context.project #  {"type":'Project',"id":186}
+    
 
+
+    SERVER_PATH = "https://nozon.shotgunstudio.com"
+    SCRIPT_NAME = 'noteManager'     
+    SCRIPT_KEY = '3fbb2a5f180457af709fcad231c96ac8a916711427af5a06c47eb1758690f6e4'
+
+    if not sg :
+        try :
+            
+            from shotgun_api3 import Shotgun
+            sg = Shotgun(SERVER_PATH, SCRIPT_NAME, SCRIPT_KEY)
+
+        except :
+            sg = app.engine.tank.shotgun
+    
+    projectId = None
+    if projectContext :
+        projectId = projectContext
+    else :
+        projectId = app.context.project
 
     today = datetime.datetime.utcnow().strftime("%Y%m%d")
 
     import os
     try :
-        os.makedirs("c:/temp")
+        os.makedirs("c:/temp/EVENTLOG")
     except :
         pass
 
-    outputLogFileName =  "c:/temp/eventManager_"+projectId["name"]+"_"+ today +".html"
+    if not progressBar :
+        import glob
+        test = outputLogFileName =  "c:/temp/EVENTLOG/eventManager_"+projectId["name"]+"_"+ "*" +".html"
+        outputLogFileName =  "c:/temp/EVENTLOG/eventManager_"+projectId["name"]+"_"+ today +".html"
+        if len(glob.glob(test)) :
+            print "skiped"
+            return 
     f = open(outputLogFileName, 'w')
     f.write("<!DOCTYPE html><html><head><title>Page Title</title></head><body><dir>")
 
 
     def cout(text) :
+        
         text = text.replace(" ","&nbsp;")
         text = text.replace("\n","<br>")
         text = text.replace("<font&nbsp;color=","<font color=")
         f.write(str(text)+"<br>\n")
-        #textLineList.append(str(text))
-        #logLabel.setText("<br>".join(textLineList))
+
 
 
 
 
 
     eventFilter_List=[]
+    if not filterDataList :
+        filterEvent = event_filter()
+        filterEvent.massTest = 60.0
+        eventFilter_List.append(  filterEvent  )
+
     for filterData in filterDataList :
         eventFilter_List.append( event_filter(*filterData))
 
-
-    progressBar.setFormat("Querying database")
+    if progressBar :
+        progressBar.setFormat("Querying database")
     textLineList=["<font color='#000000'>Results : </font>"]
     
 
@@ -614,19 +743,36 @@ def launch(progressBar, logLabel, filterDataList , app ) :
 
     wsDictList=[] 
     firstEventLog = None 
+    lastEventLog = None
 
     eventLogList =  sg.find("EventLogEntry", filters, [ "meta" , "created_at"] )
+
     cout("got It ! ")
 
     for eventLog in eventLogList :
         if eventLog["meta"].has_key("ws") :
             if not eventLog["meta"]["ws"] in wsDictList :
                 wsDictList.append(eventLog["meta"]["ws"])
+
         
             if not firstEventLog : 
                 firstEventLog = eventLog
             elif firstEventLog["id"] > eventLog["id"] :
                 firstId = eventLog
+
+
+            if not lastEventLog :
+                lastEventLog = eventLog
+            elif lastEventLog["id"] < eventLog["id"] :
+                lastEventLog = eventLog
+
+
+
+
+    if not firstEventLog :
+        print "there's no event for this project "
+        f.close()
+        return
 
 
     textLineList.append("&nbsp; &nbsp; &nbsp;->&nbsp;" +   " + ".join(wsDictList))
@@ -635,7 +781,19 @@ def launch(progressBar, logLabel, filterDataList , app ) :
 
 
     cout("Retrieving every event list since " + str(firstEventLog["created_at"])   )
-    filters = [ ["created_at", "greater_than", firstEventLog["created_at"]] ,
+    
+
+    {
+        "filter_operator": "all",
+        "filters": [
+            ["created_at", "greater_than", firstEventLog["created_at"]] ,
+            ["created_at", "smaller_than", lastEventLog["created_at"]]
+        ]
+    }
+
+
+
+    filters = [ ["created_at", "between",  [ firstEventLog["created_at"], lastEventLog["created_at"]  ]     ] ,
                 ["entity", 'is_not', None],
                 ["event_type", "in", eventFilterList ]  ]
 
@@ -644,6 +802,7 @@ def launch(progressBar, logLabel, filterDataList , app ) :
 
     wsDict = {}
     eventLogList = sg.find("EventLogEntry", filters, [ "meta", "entity", "project", "event_type", "created_at"  ] )
+
     cout("got It ! ")
     for eventLog in eventLogList : 
         thisProject = False
@@ -659,17 +818,15 @@ def launch(progressBar, logLabel, filterDataList , app ) :
         else :
             wsDict[eventLog["meta"]["ws"]].append(dataEvent)
 
-    progressBar.setFormat("Computing events")
-
-    ev = 0
     stepProgressBar = 0 
-    progressBar.setValue(stepProgressBar)
-
-
+    if progressBar :
+        progressBar.setFormat("Computing events")
+        progressBar.setValue(stepProgressBar)
+    
+    ev = 0
+    
     workstationDict = {}
     for workstation,dailyEventQueue in wsDict.iteritems():
-        if str("DUAL8WIN08") != str(workstation):
-            pass
 
         contextList = get_contextList(dailyEventQueue)
         array_2D    = makeArray( dailyEventQueue, contextList ) 
@@ -686,19 +843,47 @@ def launch(progressBar, logLabel, filterDataList , app ) :
         ev+= len(array_2D)
         
         stepProgressBar+= 100/len(wsDict.keys())
-        progressBar.setValue(stepProgressBar)
+        if progressBar :
+            progressBar.setValue(stepProgressBar)
 
 
-    #displayDataWS(workstationDict, cout )
+
+
+
     outputText = displayDataContext(workstationDict, cout )
     outputText +="<br><br> See full log file :<br>"
     outputText += str(outputLogFileName)
 
-    logLabel.setText(outputText.replace(" ","&nbsp;"))
-    progressBar.setValue(100)
-    progressBar.setFormat("Computing done")
+
+    if progressBar :
+        progressBar.setValue(100)
+        progressBar.setFormat("Computing done")
+        logLabel.setText(outputText.replace(" ","&nbsp;"))
 
     cout("done :  " +  str (ev) )
     
     f.write("</dir></body></html>")
     f.close()
+
+
+    datafileName =  "c:/temp/EVENTLOG/eventManager_"+projectId["name"]+"_"+ today +".pkl"
+    displayDataContext_perDay( workstationDict, projectId["name"], datafileName  )
+
+
+
+if __name__ == '__main__':
+
+    SERVER_PATH = "https://nozon.shotgunstudio.com"
+    SCRIPT_NAME = 'noteManager'     
+    SCRIPT_KEY = '3fbb2a5f180457af709fcad231c96ac8a916711427af5a06c47eb1758690f6e4'
+
+
+    import sys
+    sys.path.append("Z:/Dev/cyril/python/PACKAGES")
+    from shotgun_api3 import Shotgun
+
+    sg = Shotgun(SERVER_PATH, SCRIPT_NAME, SCRIPT_KEY)
+    projetcLit = sg.find("Project", [], ["name"])
+    for projectContext in projetcLit :
+        print "\n\n###########\tPROJECT\t############\n\t\t" , projectContext["name"], projectContext["id"]
+        launch(None, None, [] , None, projectContext, sg )

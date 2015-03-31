@@ -37,5 +37,5 @@ class StgkStarterApp(Application):
         menu_callback = lambda : app_payload.dialog.show_dialog(self)
 
         # now register the command with the engine
-        self.engine.register_command("Parse log events", menu_callback)
+        self.engine.register_command("log_events", menu_callback)
         
