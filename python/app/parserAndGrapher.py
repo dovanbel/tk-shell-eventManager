@@ -1,9 +1,84 @@
 from itertools import cycle
 from PyQt4.Qt import *
-
+from PyQt4 import QtCore, QtGui
 DEFAULT_COLORS = [0x3366cc, 0xdc3912, 0xff9900, 0x109618, 0x990099,
                   0x0099c6, 0xdd4477, 0x66aa00, 0xb82e2e, 0x316395,
                   0x994499, 0x22aa99, 0xaaaa11, 0x6633cc, 0x16d620]
+
+
+
+
+class ExpanderWidget(QtGui.QWidget):
+    hided =QtCore.pyqtSignal()
+    def __init__(self, text, widget, parent=None):
+        super(ExpanderWidget, self).__init__(parent)
+
+        self.layout = QtGui.QVBoxLayout()
+        self.layout.setContentsMargins(0,0,0,0)
+
+        # better use your own icons
+        # these are kind of ugly :)
+        style = QtGui.QCommonStyle()
+        self.rightArrow = style.standardIcon(QtGui.QStyle.SP_ArrowRight)
+        self.downArrow = style.standardIcon(QtGui.QStyle.SP_ArrowDown)
+
+        self.toggle = QtGui.QPushButton(self.downArrow, text)
+        self.toggle.clicked.connect(self.toggleWidget)
+
+        self.widget = widget
+
+        self.layout.addWidget(self.toggle)
+        self.layout.addWidget(self.widget)
+        self.setLayout(self.layout)
+
+        self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
+
+    def toggleWidget(self):
+        if self.widget.isVisible():
+            self.toggle.setIcon(self.rightArrow)
+            #self.widget.setVisible(False)
+            self.widget.hide()
+            self.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Minimum)
+
+        else:
+            self.toggle.setIcon(self.downArrow)
+            self.widget.show()
+            #self.widget.setVisible(True)
+            self.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
+
+        self.hided.emit()
+class myFolder(QtGui.QWidget):
+    hided =QtCore.pyqtSignal()
+
+    def __init__(self, title, widget, parent=None):
+        super(myFolder, self).__init__(parent)
+        self.widget = widget
+
+        mainLay = QtGui.QVBoxLayout()
+        self.setLayout(mainLay)
+
+        self.clickBox = QtGui.QCheckBox(self)
+        self.clickBox.setMaximumHeight(20)
+        self.clickBox.stateChanged.connect(self.hideWidget)
+
+        barLayout = QtGui.QHBoxLayout()
+
+        barLayout.addWidget(self.clickBox )
+        barLayout.addWidget(QtGui.QLabel (title ))
+        barLayout.addStretch()
+        
+        mainLay.addLayout(barLayout)
+        mainLay.addWidget(self.widget )
+
+
+    def hideWidget(self, state):
+        if state == 0 :
+            self.widget.hide() 
+            self.setSizeHint(20)
+        else :
+            self.widget.show()
+            self.setSizeHint(200)
+        self.hided.emit()
 
 class Chart(object):
     def __init__(self, data, colors=None):
@@ -662,7 +737,7 @@ def get_my_taskName(sg_name):
     {"text" : "Anim", "icon" : "task_animation.png", "values": ["Animation","animation","anim", "Anim"]  },
     {"text" : "layout", "icon" : "task_layout.png" , "values": ["Layout", "layout", "Assembly", "LayOut"] },
     {"text" : "Fur", "icon" : "task_fur.png" , "values": ["fur","Fur", "Groom", "groom", "Hair"] },
-    {"text" : "Fx",  "icon" : "task_fx.png" , "values": [ "fx", "FX", "Fx", "fX", "Particles", "Simulation", "nCloth" ] },
+    {"text" : "Fx",  "icon" : "task_fx.png" , "values": [ "fx", "FX", "Fx", "fX", "Particles", "Simulation", "nCloth", "Rocks" ] },
     {"text" : "Surface", "icon" : "task_surfacing.png" , "values": ["Surface", "Surfacing"] },             
     {"text" : "modeling", "icon" : "task_modelisation.png" , "values": ["Modeling", "Model" , "model", "modeling", "retopo", "wire" ] },
     {"text" : "rigging", "icon" : "task_rig.png" , "values": ["Rig", "rig", "rigging", "Rigging" ] },
@@ -1294,6 +1369,7 @@ class myGraph(QWidget) :
         QWidget.__init__(self, parent )
 
         self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0,0,0,0)
         self.setLayout(self.layout)
         self.dataType = "B"
         self.selectedProjectList = []
@@ -1303,17 +1379,25 @@ class myGraph(QWidget) :
         x = _AllProject(dataType = self.dataType )
         y = _AllProjectTasks(dataType = self.dataType )
         #y.exec_()
-
+        
         w.legendClicked.connect( self.redraw_all )
         x.legendClicked.connect( self.drawProjectCalculs )
         x.selectionChanged.connect( self.drawSelectedProjectTasks ) 
-        y.legendClicked.connect( self.drawSelectedProjectCalculs_types )
+        ##y.legendClicked.connect( self.drawSelectedProjectCalculs_types )
+        
+        folder1 = ExpanderWidget("folder1", w, self)
+        folder2 = ExpanderWidget("folder2", x, self)
+        folder3 = ExpanderWidget("folder3", y, self)
 
-        self.layout.addWidget(w)
-        self.layout.addWidget(x)
-        self.layout.addWidget(y)
+        self.layout.addWidget(folder1 )
+        self.layout.addWidget(folder2 )
+        self.layout.addWidget(folder3 )
+        self.layout.setAlignment(Qt.AlignTop)
+        
+
         self.layout.addWidget(QLabel("") )
         self.layout.addWidget(QLabel("") )
+        
         self.show()
 
 

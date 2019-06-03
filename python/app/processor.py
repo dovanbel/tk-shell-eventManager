@@ -627,16 +627,22 @@ def displayDataContext(workstationDict, cout ):
     cout("worked : " + formatMinutes(fullCalculated))
     cout("net        : " + formatMinutes(fullNet))
     cout("worked = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" )
-    cout("net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked")
-
+    try :
+        cout("net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked")
+    except :
+        print fullNet
+        print fullBruteTime
+        print fullCalculated
 
     outputText += "<br>####### TOTALS ########<br>"
     outputText += "brut       : " + formatMinutes(fullBruteTime) + "<br>"
     outputText += "worked     : " + formatMinutes(fullCalculated) + "<br>"
     outputText += "net        : " + formatMinutes(fullNet) + "<br>"
-    outputText += "worked = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" + "<br>"
-    outputText += "net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked" + "<br>"
-
+    try :
+        outputText += "worked = " + str(round(fullCalculated/fullBruteTime*100,2) ) + " % brut" + "<br>"
+        outputText += "net = " + str(round(fullNet/fullBruteTime*100,2) ) + " % brut = " + str(round(fullNet/fullCalculated*100,2) ) + " % worked" + "<br>"
+    except :
+        pass
     return outputText
 
 
@@ -705,6 +711,7 @@ def launch(progressBar, logLabel, filterDataList , app, projectContext = None, s
     f.write("<!DOCTYPE html><html><head><title>Page Title</title></head><body><dir>")
 
 
+
     def cout(text) :
         
         text = text.replace(" ","&nbsp;")
@@ -718,7 +725,9 @@ def launch(progressBar, logLabel, filterDataList , app, projectContext = None, s
 
 
     eventFilter_List=[]
+
     if not filterDataList :
+        print "mass filtering method"
         filterEvent = event_filter()
         filterEvent.massTest = 60.0
         eventFilter_List.append(  filterEvent  )
